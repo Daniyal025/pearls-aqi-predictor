@@ -119,6 +119,18 @@ def train_for_horizon(df: pd.DataFrame, horizon_col: str, version: str) -> dict[
         artifact_path = str(ARTIFACT_DIR / f"aqi_{horizon}_{version}_{best_type}.joblib")
         joblib.dump({"model": fitted[best_type], "features": feats}, artifact_path)
 
+    # Upload the artifact to GridFS so machines that did NOT train the model
+    # (e.g. Streamlit Cloud / Render) can still load it. Local path is kept as
+    # a fast same-machine fallback. Disable with USE_GRIDFS=false if undesired.
+    gridfs_file_id: str | None = None
+    if os.getenv("USE_GRIDFS", "true").lower() != "false":
+        try:
+            from aqi_predictor.database.gridfs_store import upload_artifact
+            filename = Path(artifact_path).name
+            gridfs_file_id = upload_artifact(artifact_path, filename)
+        except Exception as exc:  # noqa: BLE001 -- non-fatal; local path still works
+            logger.warning("GridFS upload failed (%s); using local path only.", exc)
+
     register_model(
         model_name=f"aqi_forecaster_{horizon}",
         model_version=version,
@@ -127,6 +139,7 @@ def train_for_horizon(df: pd.DataFrame, horizon_col: str, version: str) -> dict[
         features_used=feats,
         metrics={k: best[k] for k in ("rmse", "mae", "r2")},
         artifact_path=artifact_path,
+        gridfs_file_id=gridfs_file_id,
         make_active=True,
     )
 

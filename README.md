@@ -8,6 +8,19 @@ MongoDB Atlas feature store + model registry**, OpenWeather data, scikit-learn
 > **AQI note:** OpenWeather AQI is a **1–5** scale (1 Good · 2 Fair · 3 Moderate ·
 > 4 Poor · 5 Very Poor), *not* the US 0–500 scale.
 
+## 🚀 Live deployments
+
+- **Dashboard (Streamlit Cloud):** https://pearls-aqi-predictor-syed-daniyal-ali.streamlit.app/
+- **API (Render):** https://pearls-aqi-predictor.onrender.com/, e.g._ `https://pearls-aqi-api.onrender.com` (try `/docs` and `/health`)
+
+> The Render free tier sleeps when idle, so the first request after a pause may
+> take ~30–50s to wake.
+
+> **Deployment requires GridFS.** Training and serving run on different machines
+> that do not share a filesystem, so models are stored in MongoDB GridFS (not
+> just on local disk). Training uploads the artifact automatically; the API and
+> dashboard download it on demand. See "Deployment note" below.
+
 ## Quick start
 ```bash
 python -m venv .venv
@@ -31,6 +44,25 @@ streamlit run app/dashboard/streamlit_app.py      # dashboard
 ## Secrets
 Never commit `.env`. Use GitHub Secrets in CI, Streamlit secrets on Streamlit
 Cloud, and platform env vars on Render/Cloud Run. See `.env.example`.
+
+## Deployment note — why models live in GridFS
+When you train locally (or in GitHub Actions) and serve on Streamlit Cloud /
+Render, the machines do **not** share a filesystem. A model saved only to
+`artifacts/models/*.joblib` on the training machine cannot be opened by the
+deployed app — you would see an error like
+`No such file or directory: 'artifacts/models/aqi_24h_..._extra_trees.joblib'`.
+
+To fix this, the training pipeline uploads each model artifact to **MongoDB
+GridFS** and records its `gridfs_file_id` in the model registry. The API and
+dashboard load the model from the local file when present, and otherwise
+download it from GridFS automatically (caching it locally). This is on by
+default; set `USE_GRIDFS=false` to disable it for purely local single-machine
+use.
+
+**If your deployed dashboard shows the "models not ready" file error:** retrain
+once with GridFS enabled so the artifact is uploaded —
+`python pipelines/train_pipeline.py` (or trigger the daily training workflow) —
+then reload the dashboard.
 
 ## Tests
 ```bash
