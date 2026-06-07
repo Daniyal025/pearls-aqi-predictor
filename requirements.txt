@@ -1,0 +1,24 @@
+# Core
+python-dotenv>=1.0.0
+requests>=2.31.0
+pymongo>=4.6.0
+
+# Data / ML
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+shap>=0.44.0
+matplotlib>=3.7.0
+
+# API + dashboard
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+streamlit>=1.31.0
+
+# Tests
+pytest>=8.0.0
+
+# TensorFlow is OPTIONAL and heavy. Uncomment to enable the optional TF model.
+# tensorflow>=2.15.0

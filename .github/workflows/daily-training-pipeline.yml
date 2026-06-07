@@ -1,0 +1,26 @@
+name: Daily Training Pipeline
+
+on:
+  schedule:
+    - cron: "30 2 * * *"   # 02:30 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install -r requirements.txt
+      - name: Run training pipeline
+        env:
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DATABASE: ${{ secrets.MONGODB_DATABASE }}
+          CITY_NAME: ${{ secrets.CITY_NAME }}
+          LATITUDE: ${{ secrets.LATITUDE }}
+          LONGITUDE: ${{ secrets.LONGITUDE }}
+          TIMEZONE: ${{ secrets.TIMEZONE }}
+        run: python pipelines/train_pipeline.py
