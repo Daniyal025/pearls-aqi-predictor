@@ -48,6 +48,10 @@ def create_indexes() -> None:
     db[C.MODEL_METRICS].create_index([("created_at", DESCENDING)], name="created_at")
     db[C.PREDICTIONS].create_index([("created_at", DESCENDING)], name="created_at")
     db[C.ALERTS].create_index([("created_at", DESCENDING)], name="created_at")
+    # Unique alert_key dedups alerts to one per city/horizon/severity/day.
+    db[C.ALERTS].create_index(
+        [("alert_key", ASCENDING)], unique=True, sparse=True, name="uniq_alert_key"
+    )
 
     logger.info("All indexes created/verified.")
 

@@ -1,0 +1,25 @@
+# Render deployment config for the FastAPI service.
+# Render auto-detects this file. Set secret VALUES in the Render dashboard
+# (Environment tab) — never commit real secrets.
+services:
+  - type: web
+    name: pearls-aqi-api
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.api.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        sync: false
+      - key: CITY_NAME
+        sync: false
+      - key: LATITUDE
+        sync: false
+      - key: LONGITUDE
+        sync: false
+      - key: TIMEZONE
+        sync: false

@@ -18,6 +18,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 import pandas as pd
 import streamlit as st
 
+# On Streamlit Cloud, secrets arrive via st.secrets (not env vars). Bridge them
+# into os.environ BEFORE get_settings() reads them. Harmless locally (no-op if
+# no secrets file is present).
+import os
+try:
+    for _k in ("MONGODB_URI", "MONGODB_DATABASE", "CITY_NAME", "LATITUDE",
+               "LONGITUDE", "TIMEZONE", "OPENWEATHER_API_KEY", "API_BASE_URL"):
+        if _k in st.secrets:
+            os.environ.setdefault(_k, str(st.secrets[_k]))
+except Exception:
+    pass  # no secrets configured (pure-local run); rely on .env
+
+from aqi_predictor.alerts import recent_alerts
 from aqi_predictor.config import get_settings
 from aqi_predictor.database import collections as C
 from aqi_predictor.database.mongodb_client import get_db
@@ -104,3 +117,16 @@ shap_png = Path("artifacts/shap/shap_24h.png")
 if shap_png.exists():
     st.subheader("SHAP feature importance (24h model)")
     st.image(str(shap_png))
+
+st.divider()
+
+# Recent alerts (Poor / Very Poor) with health guidance.
+st.subheader("Recent alerts")
+alerts = recent_alerts(city, limit=10)
+if not alerts:
+    st.success("No recent Poor/Very Poor AQI alerts for this city.")
+else:
+    for a in alerts:
+        box = st.error if a.get("severity") == "very_poor" else st.warning
+        guidance = f" — {a['guidance']}" if a.get("guidance") else ""
+        box(f"**{a['aqi_category']}** ({a['horizon']}): {a['message']}{guidance}")

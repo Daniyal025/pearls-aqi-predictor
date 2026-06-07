@@ -24,12 +24,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from aqi_predictor.alerts import maybe_log_alert, recent_alerts
 from aqi_predictor.config import get_settings
 from aqi_predictor.database import collections as C
 from aqi_predictor.database.mongodb_client import get_db, ping
 from aqi_predictor.models.predict import predict_all
 from aqi_predictor.models.registry import get_all_active_models
-from aqi_predictor.utils.aqi import aqi_category, is_hazardous
+from aqi_predictor.utils.aqi import aqi_category
 
 app = FastAPI(title="Pearls AQI Predictor API", version="0.1.0")
 
@@ -90,12 +91,7 @@ def forecast(city: str | None = None) -> dict[str, Any]:
     db = get_db()
     db[C.PREDICTIONS].insert_one(dict(record))  # log prediction
     for p in preds:
-        if is_hazardous(p["predicted_aqi"]):
-            db[C.ALERTS].insert_one({
-                "city": city, "horizon": p["horizon"],
-                "predicted_aqi": p["predicted_aqi"],
-                "aqi_category": p["aqi_category"], "created_at": now,
-            })
+        maybe_log_alert(city, p["horizon"], p["predicted_aqi"], now=now)
     record.pop("_id", None)
     return record
 
@@ -117,3 +113,10 @@ def latest_features(city: str | None = None) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"No features for {city}.")
     latest.pop("_id", None)
     return latest
+
+
+@app.get("/alerts")
+def alerts(city: str | None = None, limit: int = 10) -> dict[str, Any]:
+    s = get_settings()
+    city = city or s.city_name
+    return {"city": city, "alerts": recent_alerts(city, limit=limit)}

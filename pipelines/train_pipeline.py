@@ -42,6 +42,18 @@ def run() -> list:
     results = train_all(df)
     for r in results:
         logger.info("Best for %s: %s", r["horizon"], r["best_model_type"])
+
+    # Generate SHAP charts for the freshly-trained active models.
+    try:
+        # Ensure project root is importable so 'pipelines' resolves regardless of cwd.
+        root = str(Path(__file__).resolve().parent.parent)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from pipelines.explain_pipeline import run as run_explain
+        run_explain([r["horizon"] for r in results])
+    except Exception as exc:  # noqa: BLE001 -- explainability is non-critical
+        logger.warning("SHAP generation skipped: %s", exc)
+
     return results
 
 

@@ -14,12 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from aqi_predictor.alerts import maybe_log_alert
 from aqi_predictor.config import get_settings
 from aqi_predictor.database import collections as C
 from aqi_predictor.database.mongodb_client import get_db
 from aqi_predictor.logging_config import get_logger
 from aqi_predictor.models.predict import predict_all
-from aqi_predictor.utils.aqi import is_hazardous
 
 logger = get_logger(__name__)
 
@@ -46,15 +46,7 @@ def run() -> dict:
     db[C.PREDICTIONS].insert_one(record)
 
     for p in preds:
-        if is_hazardous(p["predicted_aqi"]):
-            db[C.ALERTS].insert_one({
-                "city": s.city_name, "horizon": p["horizon"],
-                "predicted_aqi": p["predicted_aqi"],
-                "aqi_category": p["aqi_category"],
-                "created_at": now,
-            })
-            logger.warning("ALERT %s: AQI %s (%s)",
-                           p["horizon"], p["predicted_aqi"], p["aqi_category"])
+        maybe_log_alert(s.city_name, p["horizon"], p["predicted_aqi"], now=now)
     return record
 
 
